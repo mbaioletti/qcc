@@ -1,0 +1,4 @@
+git add .
+git commit -m "Versione del "`date +"%d-%m-%Y"`
+git push origin master
+

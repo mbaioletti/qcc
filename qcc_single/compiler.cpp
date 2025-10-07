@@ -4,6 +4,9 @@
 #include <cmath>
 #include <random>
 #include <chrono>
+#include <string>
+#include <sstream>
+
 #include "solution.h"
 using namespace std;
 #include <filesystem>
@@ -29,6 +32,7 @@ struct {
     double mut_rad = 1.0; 
     bool accurate=false;
     bool auto_adapt=false;
+    string init_state="default";
 } compile_data;
 
 mt19937 gen;
@@ -244,13 +248,35 @@ inline double clamp(double x, double lo, double hi){
      return max(lo, min(x, hi));
 }
 
+vector<int> parseNumbers(const string& input) {
+    vector<int> numbers;
+    stringstream ss(input);
+    string item;
+
+    while (getline(ss, item, ';')) {
+        if (!item.empty()) {
+            numbers.push_back(stoi(item));
+        }
+    }
+
+    return numbers;
+}
+
 static Solution* optimize()
 {
     Problem* p  = compile_data.problem;
     auto *init  = new pair<int,int>[p->n_ph_qubits];
-    for (int i = 0; i < p->n_ph_qubits; ++i) 
-        init[i] = {i, i};
-
+    if(compile_data.init_state=="default") {
+        for (int i = 0; i < p->n_ph_qubits; ++i) 
+            init[i] = {i, i};
+    } else {
+        vector<int> is=parseNumbers(compile_data.init_state);
+        int nq=is.size();
+        for(int i=0; i<nq; i++)
+            init[i] = { i, is[i] };
+        for(int i=nq; i< p->n_ph_qubits; ++i) 
+            init[i] = {i, i};
+    }
     int duration = int(compile_data.timeout*1000);
     auto t_start  = chrono::steady_clock::now();
     auto deadline = t_start + chrono::milliseconds(duration);
@@ -424,7 +450,7 @@ int main(int argc, char* argv[]) {
             fin.close();
             if(not exists) {
                 ofstream fout(compile_data.resfile, ios::out);
-                fout << "instance_name,timeout,gate_out,depth_out,num_swaps,beta,gamma,delta,seed" << endl;
+                fout << "instance_name,timeout,gate_out,depth_out,num_swaps,beta,gamma,delta,order,seed" << endl;
             }
             filesystem::path p=qasm_file;
             ofstream fout(compile_data.resfile, ios::out | ios::app);
@@ -437,7 +463,8 @@ int main(int argc, char* argv[]) {
               << compile_data.beta                    << ","
               << compile_data.gamma                   << ","
               << compile_data.delta                   << ","
-              << compile_data.seed                   << endl;
+              << compile_data.init_state              << ","
+              << compile_data.seed                    << endl;
             fout.close();
         }
         if (not compile_data.outfile.empty())
@@ -540,7 +567,11 @@ void read_options(int argc, char *argv[]) {
         else if(opt=="-seed") {
             compile_data.seed = stoi(val);
             i+=2;
-        }                                
+        }
+        else if(opt=="-init_state") {
+            compile_data.init_state=val;
+            i+=2;
+        }
         else {
             cerr << "option " << opt << " not found" << endl;
             exit(1);
