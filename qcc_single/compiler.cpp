@@ -33,6 +33,9 @@ struct {
     bool accurate=false;
     bool auto_adapt=false;
     string init_state="default";
+    string tracefile="";       
+    string instance_name="";   
+    int num_sol_found=0;     
 } compile_data;
 
 mt19937 gen;
@@ -237,6 +240,10 @@ Solution* find_solution(pair<int,int> *init_state, const chrono::steady_clock::t
     return nullptr;
 }
 
+static bool file_exists(const string& path) {
+   ifstream f(path);
+    return f.good();
+}
 
 double log_uniform(double lo, double hi){
     //Logarithmic rescaling 
@@ -330,16 +337,31 @@ static Solution* optimize()
 
         if (s) {
             bool better = false;
-            sum_depth += s->makespan;
+            sum_depth  += s->makespan;
             sum_nswaps += s->num_swaps;
+
             if (compile_data.obj_fun == "swaps" && s->num_swaps < best_swaps) {
-                better    = true;
+                better     = true;
                 best_swaps = s->num_swaps;
             } else if (compile_data.obj_fun == "depth" && s->makespan < best_depth) {
-                better    = true;
+                better     = true;
                 best_depth = s->makespan;
             }
 
+            // time absolute for start
+            auto elapsed = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - t_start).count();
+            
+            // ROW for solution found
+            if (!compile_data.tracefile.empty()) {
+                bool exists = file_exists(compile_data.tracefile);
+                ofstream fout(compile_data.tracefile, ios::out | ios::app);
+                if (!exists) {
+                    fout << "instance,elapsed_time_ms,sol_idx\n";
+                }
+                fout << compile_data.instance_name << ","
+                    << elapsed                  << ","
+                    << num_sol_found            << "\n"; 
+            }
             if (better) {
                 if (best) delete best;
                 best = s;
@@ -347,15 +369,10 @@ static Solution* optimize()
                 best_gamma = compile_data.gamma;
                 best_delta = compile_data.delta;
 
-                //reuse = min(0.8, reuse*1.1);
-                auto elapsed = chrono::duration_cast<chrono::milliseconds>(
-                                    chrono::steady_clock::now() - t_start).count();
                 cout << (compile_data.obj_fun == "swaps" ? "swaps " : "depth ")
-                     << (compile_data.obj_fun == "swaps" ? best_swaps : best_depth)
-                     << " after " << num_sol_found << " solutions and " << elapsed << " ms (seed " << compile_data.seed << ")" << endl;
-                     //<< "  |  beta="  << best_beta
-                     //<< "  gamma="   << best_gamma
-                     //<< "  delta="   << best_delta << endl;
+                    << (compile_data.obj_fun == "swaps" ? best_swaps : best_depth)
+                    << " after " << num_sol_found << " solutions and " << elapsed
+                    << " ms (seed " << compile_data.seed << ")" << endl;
             } else {
                 if (compile_data.auto_adapt and mutated) {
                     compile_data.beta  = old_beta;
@@ -366,7 +383,6 @@ static Solution* optimize()
             }
             ++num_sol_found;
         } else {
-            /* search aborted - restore hyper‑parameters if we had mutated */
             if (compile_data.auto_adapt and mutated) {
                 compile_data.beta  = old_beta;
                 compile_data.gamma = old_gamma;
@@ -404,16 +420,16 @@ string base_filename(string path) {
 
 int main(int argc, char* argv[]) {
     if (argc < 3) {
-        cerr << "Usage: " 
-                  << argv[0] 
-                  << " <architecture_file> <qasm_file> [options]\n"
-                  << "  options:\n"
-                  << "    -objf <swaps|depth>\n"
-                  << "    -choose <greedy|rwadd|rwmult>\n"
-                  << "    -prune <int>\n"
-                  << "    -timeout <double>\n"
-                  << "    -seed <int>\n"
-                  << "    -res <result_csv> \n";
+        cerr << "Usage: "
+             << argv[0]
+             << " <architecture_file> <qasm_file> [options]\n"
+             << "  options:\n"
+             << "    -objf <swaps|depth>\n"
+             << "    -choose <greedy|rwadd|rwmult>\n"
+             << "    -prune <int>\n"
+             << "    -timeout <double>\n"
+             << "    -seed <int>\n"
+             << "    -res <result_csv>\n";
         return 1;
     }
 
@@ -422,10 +438,12 @@ int main(int argc, char* argv[]) {
 
     read_options(argc - 3, argv + 3);
 
-    // Seed for mt19937
     if (compile_data.seed == -1) compile_data.seed = time(nullptr);
     cout << "Seed " << compile_data.seed << "\n";
     gen.seed(compile_data.seed);
+
+    filesystem::path qp = qasm_file;
+    compile_data.instance_name = qp.stem().string();
 
     Problem p;
     p.load_architecture(arch_file);
@@ -434,41 +452,40 @@ int main(int argc, char* argv[]) {
     p.maxqubits = compile_data.maxqubits;
 
     Solution* s = optimize();
-    
-    if(compile_data.accurate) {
+
+    if (compile_data.accurate) {
         cout << "accurate < original " << a_lt_o << ", accurate > original " << o_lt_a << ", accurate = original " << a_eq_o << endl;
     }
 
-    if(s==nullptr) {
+    if (s == nullptr) {
         cout << "No solution found" << endl;
-    }
-    else {
+    } else {
         cout << "Found a solution with " << s->activities.size() << " gates, depth " << s->makespan << " and " << s->num_swaps << " swaps " << endl;
-        if (not compile_data.resfile.empty()) {
-            fstream fin(compile_data.resfile, ios::in);
-            bool exists=not fin.fail();
-            fin.close();
-            if(not exists) {
-                ofstream fout(compile_data.resfile, ios::out);
-                fout << "instance_name,timeout,gate_out,depth_out,num_swaps,beta,gamma,delta,order,seed" << endl;
-            }
-            filesystem::path p=qasm_file;
+
+        if (!compile_data.resfile.empty()) {
+            bool exists = file_exists(compile_data.resfile);
             ofstream fout(compile_data.resfile, ios::out | ios::app);
-            fout 
-              << p.stem().c_str()                     << ","
-              << compile_data.timeout                 << ","
-              << s->activities.size()                 << ","
-              << s->makespan                          << ","
-              << s->num_swaps                         << ","
-              << compile_data.beta                    << ","
-              << compile_data.gamma                   << ","
-              << compile_data.delta                   << ","
-              << compile_data.init_state              << ","
-              << compile_data.seed                    << endl;
+            if (!exists) {
+                fout << "instance_name,timeout,gate_out,depth_out,num_swaps,beta,gamma,delta,order,seed,num_sol_found\n";
+            }
+            fout
+              << compile_data.instance_name        << ","
+              << compile_data.timeout              << ","
+              << s->activities.size()              << ","
+              << s->makespan                       << ","
+              << s->num_swaps                      << ","
+              << compile_data.beta                 << ","
+              << compile_data.gamma                << ","
+              << compile_data.delta                << ","
+              << compile_data.init_state           << ","
+              << compile_data.seed                 << ","
+              << compile_data.num_sol_found        << "\n";
             fout.close();
         }
-        if (not compile_data.outfile.empty())
+
+        if (!compile_data.outfile.empty())
             s->save_qasm(compile_data.outfile);
+
         delete s;
     }
 }
@@ -570,6 +587,10 @@ void read_options(int argc, char *argv[]) {
         }
         else if(opt=="-init_state") {
             compile_data.init_state=val;
+            i+=2;
+        }
+        else if(opt=="-trace") {
+            compile_data.tracefile = val;
             i+=2;
         }
         else {
