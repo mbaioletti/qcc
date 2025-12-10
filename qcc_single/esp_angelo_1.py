@@ -16,15 +16,18 @@ def esegui(fname, init_state):
     print("task completato")
 
 
-fname="rd53_130.qasm"
 
-nqubits=7
 
-for orders in range(30):
-    init_state=list(range(nqubits))
 
-    np.random.shuffle(init_state)
 
-    init_state=";".join(str(x) for x in init_state)
+def esperimento(fname="rd53_130.qasm", nqubits=7):
+    for orders in range(30):
+        init_state=list(range(nqubits))
+        np.random.shuffle(init_state)
+        init_state=";".join(str(x) for x in init_state)
+        esegui(fname, init_state)
 
-    esegui(fname, init_state)
+
+def elabora():
+    df=pd.pd.read_csv("esp_angelo_1.csv")
+    e=df.groupby(['instance_name','order']).agg(min_de=('depth_out','min'), max_de=('depth_out','max'))

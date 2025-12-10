@@ -24,6 +24,7 @@ struct {
     int check=1;
     int maxqubits=INT_MAX;
     int seed=-1;
+    int seed_init_state=0;
     double delta=1;
     double beta=5, gamma=10;
     double min_prob_reuse=0, max_prob_reuse=0;
@@ -417,11 +418,29 @@ Solution* optimize_chunk(int from_level, int to_level, pair<int,int> *init, int 
     return best_sol;    
 }
 
+pair<int,int>* generate_init_state(Problem *p) {
+    int n = p->n_ph_qubits;
+    auto* init  = new pair<int,int>[n];
+    for(int i = 0; i < n; ++i) init[i] = {i, i};
+    if(compile_data.seed_init_state != 0) {
+        minstd_rand gen(compile_data.seed_init_state);
+        for(int i=n-1; i>=1; i--) {
+            uniform_int_distribution<int> d(0,i);
+            int j=d(gen);
+            int temp=init[i].second;
+            init[i]={i,init[j].second};
+            init[j]={j,temp};
+        }
+    }    
+    for(int i=0; i<n; i++)
+        cout << init[i].first << "->" << init[i].second << " ";
+    cout << endl;
+    return init;
+}
+
 Solution* optimize() {
- 
     Problem* p  = compile_data.problem;
-    auto* init  = new pair<int,int>[p->n_ph_qubits];
-    for(int i = 0; i < p->n_ph_qubits; ++i) init[i] = {i, i};
+    auto init = generate_init_state(p);
     if (compile_data.bandit) {
         constexpr int BETA_MIN = 0, BETA_MAX = 5, BETA_BINS = BETA_MAX - BETA_MIN + 1;
         constexpr int GAMM_MIN = 0, GAMM_MAX = 5, GAMMA_BINS = GAMM_MAX - GAMM_MIN + 1;
@@ -543,7 +562,7 @@ int main(int argc, char* argv[]) {
             fin.close();
             if(not exists) {
                 ofstream fout(compile_data.resfile, ios::out);
-                fout << "instance_name,timeout,num_chunks,gate_out,depth_out,num_swaps,seed" << endl;
+                fout << "instance_name,timeout,num_chunks,gate_out,depth_out,num_swaps,seed,seed_is" << endl;
             }
             filesystem::path p=qasm_file;
             ofstream fout(compile_data.resfile, ios::out | ios::app);
@@ -557,7 +576,8 @@ int main(int argc, char* argv[]) {
               //<< compile_data.beta                    << ","
               //<< compile_data.gamma                   << ","
               //<< compile_data.delta                   << ","
-              << compile_data.seed                   << endl;
+              << compile_data.seed                    << ","
+              << compile_data.seed_init_state         << endl;
             fout.close();
         }
         if (not compile_data.outfile.empty())
@@ -669,6 +689,10 @@ void read_options(int argc, char *argv[]) {
             compile_data.seed = stoi(val);
             i+=2;
         }     
+        else if(opt=="-seed_is") {
+            compile_data.seed_init_state = stoi(val);
+            i+=2;
+        }
         else if(opt=="-arch") {
             compile_data.max_archive = stoi(val);
             i+=2;
