@@ -1,0 +1,22 @@
+import pandas as pd
+print("swaps")
+df=pd.read_csv("stato_iniz_sw.csv")
+df1=df[df.seed_is==0]
+df2=df[df.seed_is>0]
+r1=df1.groupby("instance_name").agg(swaps_no=("num_swaps","min")).reset_index()
+r2=df2.groupby("instance_name").agg(swaps_yes=("num_swaps","min")).reset_index()
+df_all=pd.read_csv("../revlib/tutti2.csv")
+r3=r1.merge(r2).merge(df_all)
+r3['improv']=(r3.swaps_no-r3.swaps_yes)/r3.swaps_no
+print(r3.sort_values("size"))
+print("-----------------------------------------------")
+print("depth")
+df=pd.read_csv("stato_iniz_de.csv")
+df1=df[df.seed_is==0]
+df2=df[df.seed_is>0]
+r1=df1.groupby("instance_name").agg(depth_no=("depth_out","min")).reset_index()
+r2=df2.groupby("instance_name").agg(depth_yes=("depth_out","min")).reset_index()
+df_all=pd.read_csv("../revlib/tutti2.csv")
+r3=r1.merge(r2).merge(df_all)
+r3['improv']=(r3.depth_no-r3.depth_yes)/r3.depth_no
+print(r3.sort_values("size"))
