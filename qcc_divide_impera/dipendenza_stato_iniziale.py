@@ -3,7 +3,9 @@ import os
 import subprocess
 df=pd.read_csv("../revlib/tutti.csv", sep=",")
 
-files=["miller_11.qasm", "4gt13_91.qasm", "0410184_169.qasm", "ex3_229.qasm", "sf_276.qasm", "rd53_131.qasm","rd53_251.qasm", "sqrt8_260.qasm", "misex1_241.qasm"]
+#files=["miller_11.qasm", "4gt13_91.qasm", "0410184_169.qasm", "ex3_229.qasm", "sf_276.qasm", "rd53_131.qasm","rd53_251.qasm", "sqrt8_260.qasm", "misex1_241.qasm"]
+
+files=["cycle10_2_110.qasm", "square_root_7.qasm", "sqn_258.qasm", "root_255.qasm", "urf2_277.qasm", "clip_206.qasm"]
 
 for tm in [10]:
     for f in files:
@@ -28,7 +30,7 @@ for tm in [10]:
             for si in range(0,50+1):
                 procs=[]
                 for sa in range(1,15+1):
-                    cmd=f"./compile_qasm ../revlib/architectures/ibmq_tokyo.arch ../revlib/examples/{f} -timeout {tm} -bandit 1 -divide {nch} -res stato_iniz.csv -seed {sa} -seed_is {si}"
+                    cmd=f"./compile_qasm ../revlib/architectures/ibmq_tokyo.arch ../revlib/examples/{f} -timeout {tm} -bandit 1 -divide {nch} -res stato_iniz_sw.csv -objf swaps -seed {sa} -seed_is {si}"
                     elenco=cmd.split(' ')
                     proc=subprocess.Popen(elenco)
                     procs.append(proc)
