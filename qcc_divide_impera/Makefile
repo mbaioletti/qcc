@@ -6,7 +6,7 @@ compile_qasm: main.cpp compiler.o problem.o solution.o
 compiler.o: compiler.cpp compiler.h
 	g++ $(FLAGS) -c compiler.cpp 
 	
-libcirc.so: compile_from_qiskit.cpp
+libcirc.so: compile_from_qiskit.cpp compiler.cpp problem.cpp solution.cpp
 	g++ -c -fPIC compile_from_qiskit.cpp -o compile_from_qiskit.o
 	g++ -c -fPIC compiler.cpp -o compiler_qsk.o
 	g++ -c -fPIC problem.cpp -o problem_qsk.o

@@ -17,7 +17,8 @@ int main(int argc, char* argv[]) {
                   << "    -prune <int>\n"
                   << "    -timeout <double>\n"
                   << "    -seed <int>\n"
-                  << "    -res <result_csv> \n";
+                  << "    -res <result_csv> \n"
+                  << "    -divide num_chunks \n";
         return 1;
     }
 

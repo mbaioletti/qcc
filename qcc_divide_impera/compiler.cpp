@@ -395,9 +395,6 @@ pair<int,int>* generate_init_state(Problem *p) {
             init[j]={j,temp};
         }
     }    
-    for(int i=0; i<n; i++)
-        cout << init[i].first << "->" << init[i].second << " ";
-    cout << endl;
     return init;
 }
 
