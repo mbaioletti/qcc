@@ -522,48 +522,48 @@ PActivity Solution::create_swap_activity(int lo1,int lo2) {
     return a;
 }
 
-/* codice Kotlin che cerca uno stato iniziale con la ILS
- * da tradurre in C++ dopo averlo adattato alle strutture dati
+// codice Kotlin che cerca uno stato iniziale con la ILS
+//da tradurre in C++ dopo averlo adattato alle strutture dati
 
-    fun iterated_local_search(start_time:Long) {
-        init_state=InitState(problem.num_loc,{i -> Pair(i,i)})
-        heur_init_state=select_initial_state(init_state)
-        println("initial estimated number of swaps ${heur_init_state.first}")
-        var elapsed_time = System.currentTimeMillis()-start_time
-        n_ils_tries=0
-        n_accepted=0
-        //val max_time_ils=(max_time*time_ils).toInt()
-        //while (elapsed_time<max_time_ils) {
-        while(n_ils_tries<=max_ils_iter && elapsed_time<max_time) {
-            heur_init_state=try_improve_initial_state(init_state,heur_init_state)
-            elapsed_time = System.currentTimeMillis()-start_time
-        }
-        println("num. ILS iterations ${n_ils_tries}, num. success ${n_accepted} after ${elapsed_time/1000.0} sec.")
-        println("improved estimated number of swaps ${heur_init_state.first}")    
+/*
+void Solution::iterated_local_search(int start_time) {
+    init_state=InitState(problem.num_loc,{i -> Pair(i,i)});
+    pair<int,int> heur_init_state=select_initial_state(init_state);
+    cerr << "initial estimated number of swaps " << heur_init_state.first << endl;
+    int elapsed_time = System.currentTimeMillis()-start_time;
+    n_ils_tries=0;
+    n_accepted=0;
+    //val max_time_ils=(max_time*time_ils).toInt()
+    //while (elapsed_time<max_time_ils) {
+    while(n_ils_tries <= max_ils_iter && elapsed_time < max_time) {
+        heur_init_state = try_improve_initial_state(init_state, heur_init_state);
+        elapsed_time = System.currentTimeMillis()-start_time;
     }
-    
-    fun select_initial_state(state:InitState):Pair<Int,Int> {
-        val places=IntArray(problem.num_loc, { i -> i })
-        places.shuffle(rand)
-        //print("Initial state ")
-        for(i in 0 until problem.num_loc) {
-            state[i]=Pair(i,places[i])
-        }
-        //println()
-        var res=Pair(0,0)
-        if(use_ls_is) {
-            val s0=Solution(problem,state)
-            res=local_search_initial_state(state, s0)
-        }
-        //print("Improved state ")
-        //for(i in 0 until problem.num_loc)
-        //    print(" ${state[i].second}")
-        //println()
-        return res
+    cerr << "num. ILS iterations " << n_ils_tries << ", num. success " << n_accepted << " after " << elapsed_time/1000.0 << " sec." << endl;
+    cerr << "improved estimated number of swaps " << heur_init_state.first << endl;
+}
+  
+   
+pair<int,int> Solution::select_initial_state(InitState state) {
+
+    val places=IntArray(problem.num_loc, { i -> i })
+    places.shuffle(rand)
+    for(i in 0 until problem.num_loc) {
+        state[i]=Pair(i,places[i])
     }
+    auto res=make_pair(0,0);
+    if(use_ls_is) {
+         s0=Solution(problem,state)
+        res=local_search_initial_state(state, s0)
+    }
+    return res;
+}
+
+*/
 
 
-    fun perturb(curr:InitState):InitState {
+/*
+    fun Solution::perturb(curr:InitState):InitState {
         var nsw=(problem.num_loc*perturb_strength).toInt()
         val new_ord=InitState(problem.num_loc,{i -> curr[i] })
         // perturbation
@@ -574,78 +574,76 @@ PActivity Solution::create_swap_activity(int lo1,int lo2) {
             if(j1!=j2) {
                 val p1=new_ord[j1].second
                 val p2=new_ord[j2].second
-                new_ord[j1]=Pair(j1,p2)
-                new_ord[j2]=Pair(j2,p1)
+                new_ord[j1]=make_pair(j1,p2);
+                new_ord[j2]=make_pair(j2,p1);
                 nsw--
             }
         }
         return new_ord
     }
 
-    fun try_improve_initial_state(curr:InitState, h:Pair<Int,Int>):Pair<Int,Int> {
-        val new_ord=perturb(curr)
+    pair<int,int> Solution::try_improve_initial_state(curr:InitState, h:Pair<Int,Int>) {
+        val new_ord=perturb(curr);
         // local search
-        val s0=Solution(problem,new_ord)
+        val s0=Solution(problem,new_ord);
         //val unj=s0.unjustified()
-        val h1=local_search_initial_state(new_ord, s0)
+        pair<int,int> h1=local_search_initial_state(new_ord, s0);
         // if better, accept it
         if(h1.first<h.first || (h1.first==h.first && h1.second<h.second)) {
-            for(i in 0 until problem.num_loc)
-                curr[i]=new_ord[i]
+            for(int i=0; i<problem.num_loc; i++)
+                curr[i]=new_ord[i];
             //print("After LS ")
             //for(i in 0 until problem.num_loc)
             //    print(" ${curr[i].second}")
             //println()
-            n_accepted++
-            perturb_strength=0.2
-            return h1
+            n_accepted++;
+            perturb_strength=0.2;
+            return h1;
         }
         //if(n_ils_tries%10==0) {
         //    perturb_strength=Math.min(0.8,perturb_strength*1.1)
         //}
-        return h   
+        return h;   
     }
    
-    fun local_search_initial_state(res:InitState, s0:Solution):Pair<Int,Int> {
-        var improved:Boolean
-        var (current_dsum, current_dmin)=s0.evaluate_state_all_gates()
+    pair<int,int> local_search_initial_state(res:InitState, s0:Solution) {
+        bool improved;
+        int current_dsum, current_dmin;
+        s0.evaluate_state_all_gates(current_dsum, current_dmin);
         do {
-            improved=false
-            var best_dsum=current_dsum
-            var best_dmin=current_dmin
-            var best_i=0
-            var best_j=0
-            //print("(${best_dsum},${best_dmin}) ")
-            for(i in 0..problem.num_loc-1) {
-                var q=res[i].second
-                for(j in 0..problem.num_loc-1) {
-                    var p=res[j].second
+            improved=false;
+            int best_dsum=current_dsum, best_dmin=current_dmin;
+            int best_i=0, best_j=0;
+            for(int i=0; i<problem.num_loc; i++) {
+                int q=res[i].second;
+                for(int j=0; j<problem.num_loc; j++) {
+                    int p=res[j].second;
                     if(p!=q) {
-                        s0.swap_qubits(q,p)
-                        val (dsum,dmin)=s0.evaluate_state_all_gates()
-                        s0.swap_qubits(q,p)
+                        s0.swap_qubits(q,p);
+                        int dsum, dmin;
+                        s0.evaluate_state_all_gates(dsum, dmin);
+                        s0.swap_qubits(q,p);
                         if(dsum<best_dsum || (dsum==best_dsum && dmin<best_dmin)) {
-                            best_dsum=dsum
-                            best_dmin=dmin
-                            best_i=i
-                            best_j=j
+                            best_dsum=dsum;
+                            best_dmin=dmin;
+                            best_i=i;
+                            best_j=j;
                         }
                     }
                 }
             }
             if(best_dsum<current_dsum || (best_dsum==current_dsum && best_dmin<current_dmin)) {
-                current_dsum=best_dsum
-                current_dmin=best_dmin
-                val pi=res[best_i].second
-                val pj=res[best_j].second
-                s0.swap_qubits(pi, pj)
-                res[best_i]=Pair(best_i, pj)
-                res[best_j]=Pair(best_j, pi)
-                improved=true
+                current_dsum=best_dsum;
+                current_dmin=best_dmin;
+                int pi=res[best_i].second;
+                int pj=res[best_j].second;
+                s0.swap_qubits(pi, pj);
+                res[best_i]=Pair(best_i, pj);
+                res[best_j]=Pair(best_j, pi);
+                improved=true;
             }
         } while(improved);
-        //println()
-        return Pair(current_dsum,current_dmin)
+        return make_pair(current_dsum,current_dmin);
     }
 */
 
