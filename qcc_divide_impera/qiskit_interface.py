@@ -3,6 +3,8 @@ from qiskit import QuantumCircuit
 lib=cdll.LoadLibrary("./libcirc.so")
 import numpy as np
 
+lib.dirsh.restype = c_wchar_p
+
 class Coppia(Structure):
      _fields_ = [("name", c_wchar_p),
                  ("num_qubits", c_int),
@@ -19,10 +21,8 @@ def run_dirsh(qc, fname_arch):
         c[i].num_qubits=qc.data[i].operation.num_qubits
         c[i].qb1=qc.data[i].qubits[0]._index
         c[i].qb2=qc.data[i].qubits[1]._index if qc.data[i].operation.num_qubits==2 else -1
-    ng=c_int(0)
-    p_ng=pointer(ng)
-    c1=lib.dirsh(c, n, fname_arch, p_ng)
-    return ng.value
+    c1=lib.dirsh(c, n, fname_arch)
+    return c1
     
 
 qc=QuantumCircuit(2,2)
