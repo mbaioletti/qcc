@@ -3,14 +3,14 @@ from qiskit import QuantumCircuit
 lib=cdll.LoadLibrary("./libcirc.so")
 import numpy as np
 
-lib.dirsh.restype = c_wchar_p
-
 class Coppia(Structure):
      _fields_ = [("name", c_wchar_p),
                  ("num_qubits", c_int),
                  ("qb1", c_int),
                  ("qb2", c_int)
                 ]
+                
+lib.dirsh.restype = POINTER(Coppia)
 
 def run_dirsh(qc, fname_arch):
     n=len(qc.data)
