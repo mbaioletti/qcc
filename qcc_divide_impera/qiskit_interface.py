@@ -10,7 +10,8 @@ class Coppia(Structure):
                  ("qb2", c_int)
                 ]
                 
-lib.dirsh.restype = POINTER(Coppia)
+#lib.dirsh.restype = POINTER(Coppia)
+lib.dirsh.restype = POINTER(c_int)
 
 def run_dirsh(qc, fname_arch):
     n=len(qc.data)
