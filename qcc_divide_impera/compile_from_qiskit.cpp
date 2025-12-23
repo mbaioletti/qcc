@@ -5,6 +5,7 @@ struct Gate_from_qiskit {
 	wchar_t *name;
 	int num_qubits;
 	int qb1, qb2;
+    wchar_t *param;
 };
 
 string from_wchar(const wchar_t *c) {
@@ -14,7 +15,7 @@ string from_wchar(const wchar_t *c) {
 	return s;
 }
 
-wchar_t* to_wchar(string &s) {
+wchar_t* to_wchar(const string &s) {
     int n=s.length();
     wchar_t* w=new wchar_t(n+1);
     for(int i=0; i<n; i++)
@@ -30,7 +31,7 @@ Gate_from_qiskit* call_dirsh(Gate_from_qiskit c[], int n, string arch_file) {
 	for(int i=0; i<n; i++) {
 		string type=from_wchar(c[i].name);
         int qb1=c[i].qb1, qb2=c[i].qb2;
-        string param="";
+        string param=from_wchar(c[i].param);
         p.gates.push_back(Gate(p.num_gates,type,qb1,qb2,param));
         last_qubit=max(last_qubit, qb1);
         last_qubit=max(last_qubit, qb2);        
@@ -58,10 +59,12 @@ Gate_from_qiskit* call_dirsh(Gate_from_qiskit c[], int n, string arch_file) {
             res[i].num_qubits=s->activities[i]->gate->arity;
             res[i].qb1=s->activities[i]->loc1;
             res[i].qb2=s->activities[i]->loc2;
+            res[i].param=to_wchar(s->activities[i]->gate->param);
         }
         string End="end";
         res[ng].name=to_wchar(End);
         res[ng].num_qubits=0;
+        res[ng].param=to_wchar("");
         return res;
     }
 }
