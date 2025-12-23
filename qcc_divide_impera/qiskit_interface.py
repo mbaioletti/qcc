@@ -66,7 +66,7 @@ def convert_to_qiskit(c1):
             if c1[i].num_qubits==2 or g=="swap":
                 l.append(c1[i].qb2)
             if c1[i].param != "":
-                qc2.append(gg(float(c1[i].params)), l)
+                qc2.append(gg(float(c1[i].param)), l)
             else:
                 qc2.append(gg(), l)
         else:
@@ -75,9 +75,10 @@ def convert_to_qiskit(c1):
         i += 1
     return qc2
     
-def run_dirsh(qc, fname_arch):
+def run_dirsh(qc, fname_arch, timeout=10, num_chunks=1):
     c=convert_to_dirsh(qc)
-    c1=lib.dirsh(c, len(qc.data), fname_arch)
+    c1=lib.dirsh(c, len(qc.data), fname_arch, timeout, num_chunks)
+    # manca il controllo se c1 è il puntatore nullo
     qc2=convert_to_qiskit(c1)
     return qc2
     

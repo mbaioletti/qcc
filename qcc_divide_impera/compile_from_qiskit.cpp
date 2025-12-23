@@ -24,7 +24,7 @@ wchar_t* to_wchar(const string &s) {
     return w;
 }
 
-Gate_from_qiskit* call_dirsh(Gate_from_qiskit c[], int n, string arch_file) {
+Gate_from_qiskit* call_dirsh(Gate_from_qiskit c[], int n, string arch_file, int timeout, int nch) {
     Problem p;
     p.num_gates=0;
     int last_qubit=-1;
@@ -42,7 +42,8 @@ Gate_from_qiskit* call_dirsh(Gate_from_qiskit c[], int n, string arch_file) {
     cout << "Read circuit  with " << p.gates.size() << " gates with depth " << p.depth << endl;
     p.load_architecture(arch_file);
     compile_data.problem = &p;
-    compile_data.timeout=1;
+    compile_data.timeout=timeout;
+    compile_data.num_chunks=nch;
     Solution *s=optimize();
     if(s==nullptr) {
         cout << "No solution found" << endl;
@@ -64,13 +65,13 @@ Gate_from_qiskit* call_dirsh(Gate_from_qiskit c[], int n, string arch_file) {
         string End="end";
         res[ng].name=to_wchar(End);
         res[ng].num_qubits=0;
-        res[ng].param=to_wchar("");
+        res[ng].param=to_wchar("e");
         return res;
     }
 }
 
 extern "C" {
-	Gate_from_qiskit* dirsh(Gate_from_qiskit c[], int n, const wchar_t *fa) {
-		return call_dirsh(c, n, from_wchar(fa));
+	Gate_from_qiskit* dirsh(Gate_from_qiskit c[], int n, const wchar_t *fa, int timeout, int num_chunks) {
+		return call_dirsh(c, n, from_wchar(fa), timeout, num_chunks);
 	}
 }
