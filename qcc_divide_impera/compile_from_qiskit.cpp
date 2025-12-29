@@ -42,10 +42,10 @@ Gate_from_qiskit* call_dirsh(Gate_from_qiskit c[], int n, string arch_file, int 
     cout << "Read circuit  with " << p.gates.size() << " gates with depth " << p.depth << endl;
     p.load_architecture(arch_file);
     compile_data.problem = &p;
-    compile_data.timeout=timeout;
-    compile_data.num_chunks=nch;
-    Solution *s=optimize();
-    if(s==nullptr) {
+    compile_data.timeout = timeout;
+    compile_data.num_chunks = nch;
+    Solution *s = optimize();
+    if(s == nullptr) {
         cout << "No solution found" << endl;
         return nullptr;
     }

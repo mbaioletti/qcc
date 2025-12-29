@@ -2,6 +2,7 @@
 #include <vector>
 #include <unordered_set>
 #include <fstream>
+#include <chrono>
 #include "problem.h"
 
 using namespace std;
@@ -31,9 +32,11 @@ struct Activity {
     string str();
 };
 
+typedef pair<int,int> *Init_State;
+
 struct Solution {
     Problem *problem;
-    pair<int,int> *init_state;
+    Init_State init_state;
     int num_swaps=0;
     int num_executed=0;
     int remaining=0;
@@ -52,7 +55,7 @@ struct Solution {
     int from_level=0, to_level=INT_MAX;
     PActivity start;
     // methods
-    Solution(Problem *p, pair<int,int> *is, int from_lev=0, int to_lev=INT_MAX) {
+    Solution(Problem *p, Init_State is, int from_lev=0, int to_lev=INT_MAX) {
         problem=p;
         init_state=is;
         allocate();

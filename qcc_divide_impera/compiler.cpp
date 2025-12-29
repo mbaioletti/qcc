@@ -1,6 +1,6 @@
 #include "compiler.h"
 
-compiler_options compile_data;
+Compiler_Data compile_data;
 
 struct ArmStats {
     int beta, gamma;
@@ -381,6 +381,12 @@ Solution* optimize_chunk(int from_level, int to_level, pair<int,int> *init, int 
     return best_sol;    
 }
 
+/* routines to find the initial state
+ * 
+ * generate_init_state returns the default initial state or a random one
+*/
+
+
 pair<int,int>* generate_init_state(Problem *p) {
     int n = p->n_ph_qubits;
     auto* init  = new pair<int,int>[n];
@@ -397,6 +403,206 @@ pair<int,int>* generate_init_state(Problem *p) {
     }    
     return init;
 }
+
+// codice Kotlin che cerca uno stato iniziale con la ILS
+//da tradurre in C++ dopo averlo adattato alle strutture dati
+
+Init_State state_perturbation(Init_State curr, double perturb_strength) {
+    int n=compile_data.problem->n_ph_qubits;
+    int nsw=int(n * perturb_strength);
+    Init_State new_ord=new pair<int,int>[n];
+    for(int i=0; i<n; i++) new_ord[i]=curr[i];
+    // perform the perturbation by applying nsw swaps
+    ++compile_data.n_ils_tries;
+    while(nsw>0) {
+        uniform_int_distribution<int> distr(0, n-1);
+        int j1=distr(gen);
+        int j2=distr(gen);
+        if(j1!=j2) {
+            int p1=new_ord[j1].second;
+            int p2=new_ord[j2].second;
+            new_ord[j1]=make_pair(j1,p2);
+            new_ord[j2]=make_pair(j2,p1);
+            --nsw;
+        }
+    }
+    return new_ord;
+}
+
+pair<int,int> local_search_initial_state(Init_State res, Solution &s0) {
+    bool improved;
+    int current_dsum, current_dmin;
+    s0.evaluate_state_all_gates(current_dsum, current_dmin);
+    int n=compile_data.problem->n_ph_qubits;
+    do {
+        improved=false;
+        int best_dsum=current_dsum, best_dmin=current_dmin;
+        int best_i=0, best_j=0;
+        for(int i=0; i<n; i++) {
+            int q=res[i].second;
+            for(int j=0; j<n; j++) {
+                int p=res[j].second;
+                if(p!=q) {
+                    s0.swap_qubits(q,p);
+                    int dsum, dmin;
+                    s0.evaluate_state_all_gates(dsum, dmin);
+                    s0.swap_qubits(q,p);
+                    if(dsum<best_dsum || (dsum==best_dsum && dmin<best_dmin)) {
+                        best_dsum=dsum;
+                        best_dmin=dmin;
+                        best_i=i;
+                        best_j=j;
+                    }
+                }
+            }
+        }
+        if(best_dsum<current_dsum || (best_dsum==current_dsum && best_dmin<current_dmin)) {
+            current_dsum=best_dsum;
+            current_dmin=best_dmin;
+            int pi=res[best_i].second;
+            int pj=res[best_j].second;
+            s0.swap_qubits(pi, pj);
+            res[best_i]=make_pair(best_i, pj);
+            res[best_j]=make_pair(best_j, pi);
+            improved=true;
+        }
+    } while(improved);
+    return make_pair(current_dsum,current_dmin);
+}
+
+pair<int,int> try_improve_initial_state(Init_State curr, pair<int,int> h) {
+    Init_State new_ord; // =perturb(curr, 0.2);
+    // local search
+    Solution s0(compile_data.problem, new_ord);
+    //val unj=s0.unjustified()
+    pair<int,int> h1=local_search_initial_state(new_ord, s0);
+    // if better, accept it
+    if(h1.first<h.first || (h1.first==h.first && h1.second<h.second)) {
+        for(int i=0; i<compile_data.problem->n_ph_qubits; i++)
+            curr[i]=new_ord[i];
+        //print("After LS ")
+        //for(i in 0 until problem.num_loc)
+        //    print(" ${curr[i].second}")
+        //println()
+        delete[] new_ord;
+        compile_data.n_accepted++;
+        return h1;
+    }
+    //if(n_ils_tries%10==0) {
+    //    perturb_strength=Math.min(0.8,perturb_strength*1.1)
+    //}
+    delete[] new_ord;
+    return h;   
+}
+
+pair<int,int> select_initial_state(Init_State state) {
+    int n = compile_data.problem->n_ph_qubits;
+    int* places=new int[n];
+    for(int i=0; i<n; i++) places[i]=i;
+    // shuffle places
+    for(int i=0; i<n; i++) state[i]={i, places[i]};
+    auto res=make_pair(0,0);
+/*    if(use_ls_is) {
+        s0=Solution(problem,state)
+        res=local_search_initial_state(state, s0)
+    }
+*/
+    delete places;
+    return res;
+}
+
+void iterated_local_search(chrono::time_point<chrono::steady_clock> start_time, int duration) {
+    int n = compile_data.problem->n_ph_qubits;
+    Init_State init_state = new pair<int,int>[n];
+    for(int i=0; i<n; i++) init_state[i] = {i, i};
+    pair<int,int> heur_init_state=select_initial_state(init_state);
+    cerr << "initial estimated number of swaps " << heur_init_state.first << endl;
+    auto deadline = start_time + chrono::milliseconds(duration);
+    compile_data.n_ils_tries=0;
+    compile_data.n_accepted=0;
+    //val max_time_ils=(max_time*time_ils).toInt()
+    //while (elapsed_time<max_time_ils) {
+    while(compile_data.n_ils_tries <= compile_data.max_ils_iter && chrono::steady_clock::now() < deadline) {
+        heur_init_state = try_improve_initial_state(init_state, heur_init_state);
+    }
+    int ils_time = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - start_time).count();
+    cerr << "num. ILS iterations " << compile_data.n_ils_tries 
+         << ", num. success " << compile_data.n_accepted << " after " << ils_time/1000.0 << " sec." << endl;
+    cerr << "improved estimated number of swaps " << heur_init_state.first << endl;
+    compile_data.init_state=init_state;
+}
+  
+   
+
+
+
+/*
+
+
+    pair<int,int> Solution::try_improve_initial_state(curr:InitState, h:Pair<Int,Int>) {
+        val new_ord=perturb(curr);
+        // local search
+        val s0=Solution(problem,new_ord);
+        //val unj=s0.unjustified()
+        pair<int,int> h1=local_search_initial_state(new_ord, s0);
+        // if better, accept it
+        if(h1.first<h.first || (h1.first==h.first && h1.second<h.second)) {
+            for(int i=0; i<problem.num_loc; i++)
+                curr[i]=new_ord[i];
+            //print("After LS ")
+            //for(i in 0 until problem.num_loc)
+            //    print(" ${curr[i].second}")
+            //println()
+            n_accepted++;
+            perturb_strength=0.2;
+            return h1;
+        }
+        //if(n_ils_tries%10==0) {
+        //    perturb_strength=Math.min(0.8,perturb_strength*1.1)
+        //}
+        return h;   
+    }
+   
+    pair<int,int> local_search_initial_state(res:InitState, s0:Solution) {
+        bool improved;
+        int current_dsum, current_dmin;
+        s0.evaluate_state_all_gates(current_dsum, current_dmin);
+        do {
+            improved=false;
+            int best_dsum=current_dsum, best_dmin=current_dmin;
+            int best_i=0, best_j=0;
+            for(int i=0; i<problem.num_loc; i++) {
+                int q=res[i].second;
+                for(int j=0; j<problem.num_loc; j++) {
+                    int p=res[j].second;
+                    if(p!=q) {
+                        s0.swap_qubits(q,p);
+                        int dsum, dmin;
+                        s0.evaluate_state_all_gates(dsum, dmin);
+                        s0.swap_qubits(q,p);
+                        if(dsum<best_dsum || (dsum==best_dsum && dmin<best_dmin)) {
+                            best_dsum=dsum;
+                            best_dmin=dmin;
+                            best_i=i;
+                            best_j=j;
+                        }
+                    }
+                }
+            }
+            if(best_dsum<current_dsum || (best_dsum==current_dsum && best_dmin<current_dmin)) {
+                current_dsum=best_dsum;
+                current_dmin=best_dmin;
+                int pi=res[best_i].second;
+                int pj=res[best_j].second;
+                s0.swap_qubits(pi, pj);
+                res[best_i]=Pair(best_i, pj);
+                res[best_j]=Pair(best_j, pi);
+                improved=true;
+            }
+        } while(improved);
+        return make_pair(current_dsum,current_dmin);
+    }
+*/
 
 Solution* optimize() {
     Problem* p  = compile_data.problem;

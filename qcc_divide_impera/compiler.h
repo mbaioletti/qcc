@@ -12,7 +12,7 @@ using namespace std;
 #include <algorithm>
 namespace fs = filesystem;
 
-struct compiler_options {
+struct Compiler_Data {
     int max_num_swaps=INT_MAX;
     int prune=1;
     string obj_fun="swaps";
@@ -37,12 +37,15 @@ struct compiler_options {
     int max_archive=1;
     bool any_layer=true;
     int num_chunks=1;
+    int max_ils_iter=100;
+    Init_State init_state;
+    int n_ils_tries, n_accepted;
 };
 
 
 Solution* optimize();
 
-extern compiler_options compile_data;
+extern Compiler_Data compile_data;
 extern int a_lt_o, o_lt_a, a_eq_o;
 extern mt19937 gen;
 

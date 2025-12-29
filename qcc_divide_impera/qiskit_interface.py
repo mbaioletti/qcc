@@ -41,17 +41,17 @@ def find_num_qubits(c1):
     return n+1
 
 gate_list={
-    "x": library.XGate,
-    "y": library.YGate,
-    "z": library.ZGate,
-    "h": library.HGate,
-    "t": library.TGate,    
-    "s": library.SGate,        
-    "cx": library.CXGate,        
+    "x":    library.XGate,
+    "y":    library.YGate,
+    "z":    library.ZGate,
+    "h":    library.HGate,
+    "t":    library.TGate,    
+    "s":    library.SGate,        
+    "cx":   library.CXGate,        
     "swap": library.SwapGate,
-    "rx": library.RXGate,            
-    "ry": library.RYGate,            
-    "rz": library.RZGate                    
+    "rx":   library.RXGate,            
+    "ry":   library.RYGate,            
+    "rz":   library.RZGate                    
 }
     
 def convert_to_qiskit(c1):
@@ -83,9 +83,11 @@ def run_dirsh(qc, fname_arch, timeout=10, num_chunks=1):
     return qc2
     
 
-qc=QuantumCircuit(2,2)
-qc.x(0)
-qc.h(1)
-qc.cx(0,1)
+#qc=QuantumCircuit(2,2)
+#qc.x(0)
+#qc.h(1)
+#qc.cx(0,1)
+
+qc=QuantumCircuit.from_qasm_file("../revlib/examples/miller_11.qasm")
 
 qc2=run_dirsh(qc, "../revlib/architectures/ibmq_tokyo.arch")

@@ -301,21 +301,6 @@ bool Solution::executable_at_time(PActivity a,int tm) {
     return st<=tm;
 } 
 
-/*
- * void Solution::evaluate_state_all_gates(int &dsum, int &dmin) {
-    dsum=0;
-    dmin=INT_MAX;
-    for (auto a : unjustified) {
-        if (a->gate->arity==2 // a->status!=EXECUTED
-                ) {
-            int l1=position[a->gate->qb1];
-            int l2=position[a->gate->qb2];
-            int d=problem->binary_gate_cost(l1,l2);
-            dsum += d;
-            dmin = min(d, dmin);
-        }
-    }
-} */   
 
 int Solution::estimate_swap_count(vector<PActivity> &bin_supported) {
     int min_swaps=INT_MAX;
@@ -382,6 +367,20 @@ void Solution::evaluate_state(vector<PActivity> &bin_supported, int &dsum, int &
         helpful_swaps.insert(sw2); */
         dsum += d;
         dmin = min(d,dmin);
+    }
+}
+
+void Solution::evaluate_state_all_gates(int &dsum, int &dmin) {
+    dsum=0;
+    dmin=INT_MAX;
+    for (auto a : activities) {
+        if (a->gate->arity==2 && a->status!=EXECUTED) {
+            int l1=position[a->gate->qb1];
+            int l2=position[a->gate->qb2];
+            int d=problem->binary_gate_cost(l1,l2);
+            dsum += d;
+            dmin = min(d, dmin);
+        }
     }
 }
 
@@ -498,8 +497,6 @@ vector<HActivity> Solution::prune(vector<HActivity> &values,int init_dsum,int in
     return res;
 }
  
- 
-
 void Solution::swap_qubits(int l1,int l2) {
     int qb1=assignment[l1];
     int qb2=assignment[l2];
@@ -522,130 +519,6 @@ PActivity Solution::create_swap_activity(int lo1,int lo2) {
     return a;
 }
 
-// codice Kotlin che cerca uno stato iniziale con la ILS
-//da tradurre in C++ dopo averlo adattato alle strutture dati
-
-/*
-void Solution::iterated_local_search(int start_time) {
-    init_state=InitState(problem.num_loc,{i -> Pair(i,i)});
-    pair<int,int> heur_init_state=select_initial_state(init_state);
-    cerr << "initial estimated number of swaps " << heur_init_state.first << endl;
-    int elapsed_time = System.currentTimeMillis()-start_time;
-    n_ils_tries=0;
-    n_accepted=0;
-    //val max_time_ils=(max_time*time_ils).toInt()
-    //while (elapsed_time<max_time_ils) {
-    while(n_ils_tries <= max_ils_iter && elapsed_time < max_time) {
-        heur_init_state = try_improve_initial_state(init_state, heur_init_state);
-        elapsed_time = System.currentTimeMillis()-start_time;
-    }
-    cerr << "num. ILS iterations " << n_ils_tries << ", num. success " << n_accepted << " after " << elapsed_time/1000.0 << " sec." << endl;
-    cerr << "improved estimated number of swaps " << heur_init_state.first << endl;
-}
-  
-   
-pair<int,int> Solution::select_initial_state(InitState state) {
-
-    val places=IntArray(problem.num_loc, { i -> i })
-    places.shuffle(rand)
-    for(i in 0 until problem.num_loc) {
-        state[i]=Pair(i,places[i])
-    }
-    auto res=make_pair(0,0);
-    if(use_ls_is) {
-         s0=Solution(problem,state)
-        res=local_search_initial_state(state, s0)
-    }
-    return res;
-}
-
-*/
-
-
-/*
-    fun Solution::perturb(curr:InitState):InitState {
-        var nsw=(problem.num_loc*perturb_strength).toInt()
-        val new_ord=InitState(problem.num_loc,{i -> curr[i] })
-        // perturbation
-        n_ils_tries++
-        while(nsw>0) {
-            val j1=(0 until problem.num_loc).random(rand)
-            val j2=(0 until problem.num_loc).random(rand)
-            if(j1!=j2) {
-                val p1=new_ord[j1].second
-                val p2=new_ord[j2].second
-                new_ord[j1]=make_pair(j1,p2);
-                new_ord[j2]=make_pair(j2,p1);
-                nsw--
-            }
-        }
-        return new_ord
-    }
-
-    pair<int,int> Solution::try_improve_initial_state(curr:InitState, h:Pair<Int,Int>) {
-        val new_ord=perturb(curr);
-        // local search
-        val s0=Solution(problem,new_ord);
-        //val unj=s0.unjustified()
-        pair<int,int> h1=local_search_initial_state(new_ord, s0);
-        // if better, accept it
-        if(h1.first<h.first || (h1.first==h.first && h1.second<h.second)) {
-            for(int i=0; i<problem.num_loc; i++)
-                curr[i]=new_ord[i];
-            //print("After LS ")
-            //for(i in 0 until problem.num_loc)
-            //    print(" ${curr[i].second}")
-            //println()
-            n_accepted++;
-            perturb_strength=0.2;
-            return h1;
-        }
-        //if(n_ils_tries%10==0) {
-        //    perturb_strength=Math.min(0.8,perturb_strength*1.1)
-        //}
-        return h;   
-    }
-   
-    pair<int,int> local_search_initial_state(res:InitState, s0:Solution) {
-        bool improved;
-        int current_dsum, current_dmin;
-        s0.evaluate_state_all_gates(current_dsum, current_dmin);
-        do {
-            improved=false;
-            int best_dsum=current_dsum, best_dmin=current_dmin;
-            int best_i=0, best_j=0;
-            for(int i=0; i<problem.num_loc; i++) {
-                int q=res[i].second;
-                for(int j=0; j<problem.num_loc; j++) {
-                    int p=res[j].second;
-                    if(p!=q) {
-                        s0.swap_qubits(q,p);
-                        int dsum, dmin;
-                        s0.evaluate_state_all_gates(dsum, dmin);
-                        s0.swap_qubits(q,p);
-                        if(dsum<best_dsum || (dsum==best_dsum && dmin<best_dmin)) {
-                            best_dsum=dsum;
-                            best_dmin=dmin;
-                            best_i=i;
-                            best_j=j;
-                        }
-                    }
-                }
-            }
-            if(best_dsum<current_dsum || (best_dsum==current_dsum && best_dmin<current_dmin)) {
-                current_dsum=best_dsum;
-                current_dmin=best_dmin;
-                int pi=res[best_i].second;
-                int pj=res[best_j].second;
-                s0.swap_qubits(pi, pj);
-                res[best_i]=Pair(best_i, pj);
-                res[best_j]=Pair(best_j, pi);
-                improved=true;
-            }
-        } while(improved);
-        return make_pair(current_dsum,current_dmin);
-    }
-*/
 
 
 string Solution::check() {
