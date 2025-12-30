@@ -1,4 +1,5 @@
 FLAGS=-O2
+#FLAGS=-g
 
 compile_qasm: main.cpp compiler.o problem.o solution.o
 	g++ $(FLAGS) -o compile_qasm main.cpp compiler.o problem.o solution.o

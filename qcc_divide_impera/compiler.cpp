@@ -391,7 +391,7 @@ pair<int,int>* generate_init_state(Problem *p) {
     int n = p->n_ph_qubits;
     auto* init  = new pair<int,int>[n];
     for(int i = 0; i < n; ++i) init[i] = {i, i};
-    if(compile_data.seed_init_state != 0) {
+    if(compile_data.is_method=="random") {
         minstd_rand gen(compile_data.seed_init_state);
         for(int i=n-1; i>=1; i--) {
             uniform_int_distribution<int> d(0,i);
@@ -470,10 +470,10 @@ pair<int,int> local_search_initial_state(Init_State res, Solution &s0) {
     return make_pair(current_dsum,current_dmin);
 }
 
-pair<int,int> try_improve_initial_state(Init_State curr, pair<int,int> h) {
-    Init_State new_ord; // =perturb(curr, 0.2);
+pair<int,int> try_improve_initial_state(Init_State curr, pair<int,int> h, int to_level) {
+    Init_State new_ord = state_perturbation(curr, 0.2);
     // local search
-    Solution s0(compile_data.problem, new_ord);
+    Solution s0(compile_data.problem, new_ord, 0, to_level);
     //val unj=s0.unjustified()
     pair<int,int> h1=local_search_initial_state(new_ord, s0);
     // if better, accept it
@@ -495,41 +495,36 @@ pair<int,int> try_improve_initial_state(Init_State curr, pair<int,int> h) {
     return h;   
 }
 
-pair<int,int> select_initial_state(Init_State state) {
+pair<int,int> select_initial_state(Init_State state, int to_level) {
     int n = compile_data.problem->n_ph_qubits;
-    int* places=new int[n];
+    vector<int> places(n);
     for(int i=0; i<n; i++) places[i]=i;
-    // shuffle places
+    shuffle(places.begin(), places.end(), gen);
     for(int i=0; i<n; i++) state[i]={i, places[i]};
-    auto res=make_pair(0,0);
-/*    if(use_ls_is) {
-        s0=Solution(problem,state)
-        res=local_search_initial_state(state, s0)
-    }
-*/
-    delete places;
-    return res;
+    Solution s0(compile_data.problem, state, 0, to_level);
+    return local_search_initial_state(state, s0);
 }
 
-void iterated_local_search(chrono::time_point<chrono::steady_clock> start_time, int duration) {
+Init_State iterated_local_search(chrono::time_point<chrono::steady_clock> start_time, int duration, int to_level) {
     int n = compile_data.problem->n_ph_qubits;
     Init_State init_state = new pair<int,int>[n];
     for(int i=0; i<n; i++) init_state[i] = {i, i};
-    pair<int,int> heur_init_state=select_initial_state(init_state);
-    cerr << "initial estimated number of swaps " << heur_init_state.first << endl;
+    pair<int,int> heur_init_state=select_initial_state(init_state, to_level);
+    cerr    << "ILS duration " << duration << " ms "
+            << "initial estimated number of swaps " << heur_init_state.first << endl;
     auto deadline = start_time + chrono::milliseconds(duration);
     compile_data.n_ils_tries=0;
     compile_data.n_accepted=0;
     //val max_time_ils=(max_time*time_ils).toInt()
     //while (elapsed_time<max_time_ils) {
-    while(compile_data.n_ils_tries <= compile_data.max_ils_iter && chrono::steady_clock::now() < deadline) {
-        heur_init_state = try_improve_initial_state(init_state, heur_init_state);
+    while(/*compile_data.n_ils_tries <= compile_data.max_ils_iter &&*/ chrono::steady_clock::now() < deadline) {
+        heur_init_state = try_improve_initial_state(init_state, heur_init_state, to_level);
     }
     int ils_time = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - start_time).count();
     cerr << "num. ILS iterations " << compile_data.n_ils_tries 
          << ", num. success " << compile_data.n_accepted << " after " << ils_time/1000.0 << " sec." << endl;
     cerr << "improved estimated number of swaps " << heur_init_state.first << endl;
-    compile_data.init_state=init_state;
+    return init_state;
 }
   
    
@@ -606,7 +601,17 @@ void iterated_local_search(chrono::time_point<chrono::steady_clock> start_time, 
 
 Solution* optimize() {
     Problem* p  = compile_data.problem;
-    auto init = generate_init_state(p);
+    int total_duration = static_cast<int>(compile_data.timeout * 1000);
+    int num_lev_per_chunk = p->depth / compile_data.num_chunks;
+    int duration = total_duration / compile_data.num_chunks;
+        
+    Init_State init_state;
+    if(compile_data.is_method=="default" or compile_data.is_method=="random")
+        init_state = generate_init_state(p);
+    else {
+        auto start_time = chrono::steady_clock::now();
+        init_state = iterated_local_search(start_time, duration/10, num_lev_per_chunk);
+    }
     if (compile_data.bandit) {
         constexpr int BETA_MIN = 0, BETA_MAX = 5, BETA_BINS = BETA_MAX - BETA_MIN + 1;
         constexpr int GAMM_MIN = 0, GAMM_MAX = 5, GAMMA_BINS = GAMM_MAX - GAMM_MIN + 1;
@@ -620,15 +625,15 @@ Solution* optimize() {
             }
         compile_data.auto_adapt = false;
     }    
-    int total_duration = static_cast<int>(compile_data.timeout * 1000);
-    int num_lev_per_chunk = p->depth / compile_data.num_chunks;
-    int duration = total_duration / compile_data.num_chunks;
+
     int from_level = 0, to_level = num_lev_per_chunk;
-    auto new_init=init;
+    auto new_init = init_state;
     Solution *sol;
     for(int c=1; c<=compile_data.num_chunks; c++) {
-        cout << "Chunk #" << c << " from L" << from_level << " to L" << to_level << " timeout " << duration << " ms" << endl;
-        Solution *cs=optimize_chunk(from_level, to_level, new_init, duration);
+        // for the first chunk, the time is reduced to 9/10 of duration
+        int duration1 = (c==1 and compile_data.is_method=="ils") ? 9*duration/10 : duration;
+        cout << "Chunk #" << c << " from L" << from_level << " to L" << to_level << " timeout " << duration1 << " ms" << endl;        
+        Solution *cs=optimize_chunk(from_level, to_level, new_init, duration1);
         if(cs==nullptr)
             return cs;
         if(c==1)

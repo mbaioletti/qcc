@@ -18,7 +18,9 @@ int main(int argc, char* argv[]) {
                   << "    -timeout <double>\n"
                   << "    -seed <int>\n"
                   << "    -res <result_csv> \n"
-                  << "    -divide num_chunks \n";
+                  << "    -divide num_chunks \n"
+                  << "    -init_state default|random|ils"
+                  << endl;
         return 1;
     }
 
@@ -184,6 +186,10 @@ void read_options(int argc, char *argv[]) {
         }
         else if(opt=="-divide") {
             compile_data.num_chunks = stoi(val);
+            i += 2;
+        }
+        else if(opt=="-init_state") {
+            compile_data.is_method = val;
             i += 2;
         }
         else {

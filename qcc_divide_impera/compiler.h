@@ -37,8 +37,8 @@ struct Compiler_Data {
     int max_archive=1;
     bool any_layer=true;
     int num_chunks=1;
+    string is_method="default";
     int max_ils_iter=100;
-    Init_State init_state;
     int n_ils_tries, n_accepted;
 };
 
