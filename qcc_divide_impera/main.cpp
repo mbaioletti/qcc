@@ -60,7 +60,9 @@ int main(int argc, char* argv[]) {
           //<< compile_data.beta                    << ","
           //<< compile_data.gamma                   << ","
           //<< compile_data.delta                   << ","
-          << compile_data.seed                   << endl;
+          << compile_data.seed                    << ","              
+          << compile_data.is_method               << ","
+          << compile_data.obj_fun                 << endl;
         fout.close();        
     }
     else {
@@ -72,7 +74,7 @@ int main(int argc, char* argv[]) {
             fin.close();
             if(not exists) {
                 ofstream fout(compile_data.resfile, ios::out);
-                fout << "instance_name,timeout,num_chunks,gate_out,depth_out,num_swaps,seed,seed_is" << endl;
+                fout << "instance_name,timeout,num_chunks,gate_out,depth_out,num_swaps,seed,method_is,objfun" << endl;
             }
             filesystem::path p=qasm_file;
             ofstream fout(compile_data.resfile, ios::out | ios::app);
@@ -87,7 +89,8 @@ int main(int argc, char* argv[]) {
               //<< compile_data.gamma                   << ","
               //<< compile_data.delta                   << ","
               << compile_data.seed                    << ","
-              << compile_data.seed_init_state         << endl;
+              << compile_data.is_method               << ","
+              << compile_data.obj_fun                 << endl;
             fout.close();
         }
         if (not compile_data.outfile.empty())
