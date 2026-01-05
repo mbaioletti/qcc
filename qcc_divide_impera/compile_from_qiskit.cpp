@@ -60,6 +60,7 @@ Gate_from_qiskit* call_dirsh(Gate_from_qiskit c[], int n, string arch_file, int 
             res[i].num_qubits=s->activities[i]->gate->arity;
             res[i].qb1=s->activities[i]->loc1;
             res[i].qb2=s->activities[i]->loc2;
+            cout << s->activities[i]->gate->type << " " << s->activities[i]->gate->param << endl;
             res[i].param=to_wchar(s->activities[i]->gate->param);
         }
         string End="end";

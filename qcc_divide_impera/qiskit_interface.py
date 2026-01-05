@@ -45,8 +45,10 @@ gate_list={
     "y":    library.YGate,
     "z":    library.ZGate,
     "h":    library.HGate,
-    "t":    library.TGate,    
-    "s":    library.SGate,        
+    "t":    library.TGate,  
+    "tdg":  library.TdgGate,  
+    "s":    library.SGate, 
+    "sdg":  library.SdgGate,
     "cx":   library.CXGate,        
     "swap": library.SwapGate,
     "rx":   library.RXGate,            
@@ -58,8 +60,10 @@ def convert_to_qiskit(c1):
     nqb=find_num_qubits(c1)
     qc2=QuantumCircuit(nqb)
     i=0
+    print("inizio la conversione")
     while c1[i].name != "end":
         g=c1[i].name.lower()
+        print(f"porta {g}")
         if g in gate_list:
             gg=gate_list[g]
             l=[c1[i].qb1]
@@ -88,6 +92,7 @@ def run_dirsh(qc, fname_arch, timeout=10, num_chunks=1):
 #qc.h(1)
 #qc.cx(0,1)
 
-qc=QuantumCircuit.from_qasm_file("../revlib/examples/miller_11.qasm")
+#qc=QuantumCircuit.from_qasm_file("../revlib/examples/miller_11.qasm")
+qc=QuantumCircuit.from_qasm_file("../revlib/examples/qft_10.qasm")
 
-qc2=run_dirsh(qc, "../revlib/architectures/ibmq_tokyo.arch")
+qc2=run_dirsh(qc, "../revlib/architectures/ibmq_tokyo.arch", timeout=1)
