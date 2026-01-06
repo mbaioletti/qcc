@@ -79,7 +79,7 @@ def convert_to_qiskit(c1):
         i += 1
     return qc2
     
-def run_dirsh(qc, fname_arch, timeout=10, num_chunks=1):
+def run_dirsh(qc, fname_arch, timeout=10, num_chunks=10):
     c=convert_to_dirsh(qc)
     c1=lib.dirsh(c, len(qc.data), fname_arch, timeout, num_chunks)
     # manca il controllo se c1 è il puntatore nullo
