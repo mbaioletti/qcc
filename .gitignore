@@ -1,0 +1,64 @@
+############################################
+# OS / Editor
+############################################
+.DS_Store
+Thumbs.db
+
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+.idea/
+*.swp
+*.swo
+
+############################################
+# Python
+############################################
+__pycache__/
+*.py[cod]
+*$py.class
+
+# virtualenv
+.venv/
+venv/
+ENV/
+env/
+
+# packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# test / tools
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+############################################
+# C / C++ build artifacts
+############################################
+# objects, deps
+*.o
+*.obj
+*.a
+*.la
+*.lo
+*.d
+*.dSYM/
+*.pch
+
+# shared libraries
+*.so
+*.so.*
+libcirc.so*
+
+compile_qasm
+a.out
+

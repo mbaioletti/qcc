@@ -16,13 +16,14 @@ string from_wchar(const wchar_t *c) {
 }
 
 wchar_t* to_wchar(const string &s) {
-    int n=s.length();
-    wchar_t* w=new wchar_t(n+1);
+    int n = (int)s.size();
+    wchar_t* w = new wchar_t[n+1];
     for(int i=0; i<n; i++)
-        w[i]=(wchar_t)(s[i]);
-    w[n]=(wchar_t)(0);
+        w[i] = (wchar_t)(unsigned char)s[i];
+    w[n] = 0;
     return w;
 }
+
 
 Gate_from_qiskit* call_dirsh(Gate_from_qiskit c[], int n, string arch_file, int timeout, int nch) {
     Problem p;
