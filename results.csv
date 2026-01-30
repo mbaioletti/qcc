@@ -1,0 +1,13 @@
+seed,instance_file,architecture,heuristic,time_budget,elapsed_s,swaps_in,swaps_out,depth_in,depth_out,size_in,size_out
+1,revlib/examples/urf5_280.qasm,ibmq_tokyo.arch,basic,5,4.902554626999972,0,10763,27822,41138,49829,60592
+2,revlib/examples/urf5_280.qasm,ibmq_tokyo.arch,basic,5,4.9752198549999775,0,11547,27822,41845,49829,61376
+3,revlib/examples/urf5_280.qasm,ibmq_tokyo.arch,basic,5,4.990720225000132,0,10511,27822,40911,49829,60340
+4,revlib/examples/urf5_280.qasm,ibmq_tokyo.arch,basic,5,5.008794199000022,0,11715,27822,41936,49829,61544
+1,revlib/examples/urf5_280.qasm,ibmq_tokyo.arch,lookahead,5,4.192332120000174,0,8093,27822,38109,49829,57922
+2,revlib/examples/urf5_280.qasm,ibmq_tokyo.arch,lookahead,5,4.293537396999909,0,7787,27822,37895,49829,57616
+3,revlib/examples/urf5_280.qasm,ibmq_tokyo.arch,lookahead,5,4.186573367000165,0,8439,27822,38566,49829,58268
+4,revlib/examples/urf5_280.qasm,ibmq_tokyo.arch,lookahead,5,4.034036816000025,0,7745,27822,37870,49829,57574
+1,revlib/examples/urf5_280.qasm,ibmq_tokyo.arch,decay,5,4.121589030999985,0,8129,27822,38146,49829,57958
+2,revlib/examples/urf5_280.qasm,ibmq_tokyo.arch,decay,5,4.114079816999947,0,7648,27822,37736,49829,57477
+3,revlib/examples/urf5_280.qasm,ibmq_tokyo.arch,decay,5,4.149794475999897,0,8201,27822,38267,49829,58030
+4,revlib/examples/urf5_280.qasm,ibmq_tokyo.arch,decay,5,4.13078713799996,0,7730,27822,37900,49829,57559

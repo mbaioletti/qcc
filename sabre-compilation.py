@@ -5,6 +5,8 @@ from qiskit.transpiler.passes import (
     FullAncillaAllocation, EnlargeWithAncilla, ApplyLayout
 )
 import time 
+import csv
+import os
 
 def load_qasm(path:str) -> QuantumCircuit:
     return QuantumCircuit.from_qasm_file(path)
@@ -51,38 +53,150 @@ def compile_with_lightsabre(qasm_path: str, arch_path: str, heuristic: str, seed
 
     return pm.run(qc)
 
-def compile_with_budget(qasm_path: str, arch_path: str, heuristic: str, seed: int, budget: int):
+def compile_with_budget(qasm_path: str, arch_path: str, heuristic: str, seed: int, budget: float):
     start = time.perf_counter()
-    
+    deadline = start + budget
+
+    swaps = depth = size = None
+    last_iter_s = None
+
     while True:
+        now = time.perf_counter()
+
+        # If we have an estimate, don't start another run if it likely won't fit.
+        if last_iter_s is not None and now + last_iter_s >= deadline:
+            break
+
+        iter_start = time.perf_counter()
         final = compile_with_lightsabre(qasm_path, arch_path, heuristic, seed)
+        iter_end = time.perf_counter()
+
+        last_iter_s = iter_end - iter_start
+
         swaps = count_swaps(final)
         depth = final.depth()
         size = final.size()
- 
-        if time.perf_counter() - start >= budget:
+
+        if iter_end >= deadline:
             break
 
-    return swaps, depth, size, seed
+    real_time = time.perf_counter() - start
+    return swaps, depth, size, seed, real_time
+
+def save_results(
+    file_out: str,
+    filename: str,
+    architecture_name: str,
+    seed: int,
+    swaps_in: int,
+    swaps_out: int,
+    depth_in: int,
+    depth_out: int,
+    size_in: int,
+    size_out: int,
+    time_budget: float,
+    real_time: float,
+    heuristic: str,
+):
+    fieldnames = [
+        "seed",
+        "instance_file",
+        "architecture",
+        "heuristic",
+        "time_budget",
+        "real_time",
+        "swaps_in",
+        "swaps_out",
+        "depth_in",
+        "depth_out",
+        "size_in",
+        "size_out",
+    ]
+
+    row = {
+        "seed": seed,
+        "instance_file": filename,
+        "architecture": architecture_name,
+        "heuristic": heuristic,
+        "time_budget": time_budget,
+        "real_time": real_time,
+        "swaps_in": swaps_in,
+        "swaps_out": swaps_out,
+        "depth_in": depth_in,
+        "depth_out": depth_out,
+        "size_in": size_in,
+        "size_out": size_out,
+    }
+
+    write_header = (not os.path.exists(file_out)) or (os.path.getsize(file_out) == 0)
+
+    with open(file_out, mode="a", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        if write_header:
+            writer.writeheader()
+        writer.writerow(row)
 
 
 if __name__ == "__main__":
-    qasm = "revlib/examples/urf5_280.qasm"
+    qasm = "revlib/examples"   # can be a file OR a folder
     arch = "revlib/architectures/ibmq_tokyo.arch"
     heuristics = ["basic", "lookahead", "decay"]
-    seconds_list = [5]
-    seed = [1,2,3,4]
-    
-    initial = load_qasm(qasm)
-    print("=== INITIAL ===")
-    print("depth:", initial.depth())
-    print("size :", initial.size())
-    print("swaps:", count_swaps(initial))
-    
-    for h in heuristics:
-        print(f"\n### Heuristic = {h} ###")
-        for budget in seconds_list:
-            for s in seed:
-                swaps, depth, size, seed_used = compile_with_budget(qasm_path=qasm, arch_path=arch, heuristic=h, seed=s, budget=budget)
-                print(f"heuristic={h} budget={budget}s -> swaps={swaps}, depth={depth}, size={size}, seed={seed_used}")
-        
+    seconds_list = [10]
+    seeds = [1, 2, 3, 4, 5]
+    file_out = "results_sabre.csv"
+
+    # Build list of qasm files (file or folder)
+    if os.path.isdir(qasm):
+        qasm_files = [
+            os.path.join(root, f)
+            for root, _, files in os.walk(qasm)
+            for f in files
+            if f.lower().endswith(".qasm")
+        ]
+    else:
+        qasm_files = [qasm]
+
+    for qasm_file in qasm_files:
+        initial = load_qasm(qasm_file)
+        swaps_in = count_swaps(initial)
+        depth_in = initial.depth()
+        size_in = initial.size()
+
+        print("\n====================")
+        print("QASM:", qasm_file)
+        print("=== INITIAL ===")
+        print("depth:", depth_in)
+        print("size :", size_in)
+        print("swaps:", swaps_in)
+
+        for h in heuristics:
+            print(f"\n### Heuristic = {h} ###")
+            for budget in seconds_list:
+                for s in seeds:
+                    swaps_out, depth_out, size_out, seed, real_time = compile_with_budget(
+                        qasm_path=qasm_file,
+                        arch_path=arch,
+                        heuristic=h,
+                        seed=s,
+                        budget=budget
+                    )
+
+                    print(f"heuristic={h} budget={budget}s -> swaps={swaps_out}, depth={depth_out}, size={size_out}, seed={seed}, elapsed={real_time:.3f}s")
+
+                    save_results(
+                        file_out=file_out,
+                        filename=qasm_file,
+                        architecture_name=os.path.basename(arch),
+                        seed=seed,
+                        swaps_in=swaps_in,
+                        swaps_out=swaps_out,
+                        depth_in=depth_in,
+                        depth_out=depth_out,
+                        size_in=size_in,
+                        size_out=size_out,
+                        time_budget=budget,
+                        real_time=real_time,
+                        heuristic=h,
+                    )
+
+
