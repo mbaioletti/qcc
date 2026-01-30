@@ -58,30 +58,39 @@ def compile_with_budget(qasm_path: str, arch_path: str, heuristic: str, seed: in
     deadline = start + budget
 
     swaps = depth = size = None
-    last_iter_s = None
+    last_iter = None
 
     while True:
         now = time.perf_counter()
-
-        # If we have an estimate, don't start another run if it likely won't fit.
-        if last_iter_s is not None and now + last_iter_s >= deadline:
+        remaining = deadline - now
+        if remaining <= 0:
             break
 
-        iter_start = time.perf_counter()
-        final = compile_with_lightsabre(qasm_path, arch_path, heuristic, seed)
-        iter_end = time.perf_counter()
+        # if i know the duration of run not initialize another
+        if last_iter is not None and remaining < last_iter:
+            break
 
-        last_iter_s = iter_end - iter_start
+        t0 = time.perf_counter()
+        final = compile_with_lightsabre(qasm_path, arch_path, heuristic, seed)
+        t1 = time.perf_counter()
+
+        last_iter = t1 - t0
 
         swaps = count_swaps(final)
         depth = final.depth()
         size = final.size()
 
-        if iter_end >= deadline:
+        if t1 >= deadline:
             break
+
+    # wait the res for stop near the value of budget
+    rem = deadline - time.perf_counter()
+    if rem > 0:
+        time.sleep(rem)
 
     real_time = time.perf_counter() - start
     return swaps, depth, size, seed, real_time
+
 
 def save_results(
     file_out: str,
