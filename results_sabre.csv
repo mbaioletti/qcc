@@ -1,2 +1,0 @@
-seed,instance_file,architecture,heuristic,time_budget,real_time,swaps_in,swaps_out,depth_in,depth_out,size_in,size_out
-1,revlib/examples/4gt11_82.qasm,ibmq_tokyo.arch,basic,5,4.993650117000016,0,5,20,22,27,32
