@@ -141,8 +141,8 @@ if __name__ == "__main__":
     qasm = "revlib/examples"   # can be a file OR a folder
     arch = "revlib/architectures/ibmq_tokyo.arch"
     heuristics = ["basic", "lookahead", "decay"]
-    seconds_list = [10]
-    seeds = [1, 2, 3, 4, 5]
+    seconds_list = [10, 20, 30, 60]
+    seeds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     file_out = "results_sabre.csv"
 
     # Build list of qasm files (file or folder)
