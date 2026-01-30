@@ -53,40 +53,39 @@ def compile_with_lightsabre(qasm_path: str, arch_path: str, heuristic: str, seed
 
     return pm.run(qc)
 
-def compile_with_budget(qasm_path: str, arch_path: str, heuristic: str, seed: int, budget: float):
-    start = time.perf_counter()
-    deadline = start + budget
 
+def compile_with_budget(qasm_path, arch_path, heuristic, seed, budget):
+    start = time.perf_counter()
+    end_time = start + budget
+
+    # Results of the last completed compilation
     swaps = depth = size = None
-    last_iter = None
+    #  Duration of the last compilation run
+    last_run_time = None  
 
     while True:
-        now = time.perf_counter()
-        remaining = deadline - now
-        if remaining <= 0:
+        time_left = end_time - time.perf_counter()
+        if time_left <= 0:
             break
 
-        # if i know the duration of run not initialize another
-        if last_iter is not None and remaining < last_iter:
+        # If i know how long a run takes, don't start another one if it won't fit
+        if last_run_time is not None and time_left < last_run_time:
             break
 
         t0 = time.perf_counter()
-        final = compile_with_lightsabre(qasm_path, arch_path, heuristic, seed)
+        compiled = compile_with_lightsabre(qasm_path, arch_path, heuristic, seed)
         t1 = time.perf_counter()
 
-        last_iter = t1 - t0
+        last_run_time = t1 - t0
 
-        swaps = count_swaps(final)
-        depth = final.depth()
-        size = final.size()
+        swaps = count_swaps(compiled)
+        depth = compiled.depth()
+        size  = compiled.size()
 
-        if t1 >= deadline:
-            break
-
-    # wait the res for stop near the value of budget
-    rem = deadline - time.perf_counter()
-    if rem > 0:
-        time.sleep(rem)
+    # If there is still time left, sleep to stop as close as possible to the time budget
+    time_left = end_time - time.perf_counter()
+    if time_left > 0:
+        time.sleep(time_left)
 
     real_time = time.perf_counter() - start
     return swaps, depth, size, seed, real_time
